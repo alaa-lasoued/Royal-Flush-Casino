@@ -4,7 +4,7 @@ const appConfig = {
     backgroundColor: 355416,         // PIXI app background color
     borderRadius: "11px",            // PIXI app border radius in px
     pocketsNumber: 37,               // total number of roulette pockets
-    roundDuration: 5,                // round duration in seconds
+    roundDuration: 10,                // round duration in seconds
     displayCollisionObjects: false,  // if true display table collision objects
     rouletteRotationSpeed: 0.06,    // roulette rotation speed in radian
 };

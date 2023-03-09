@@ -22,7 +22,7 @@ function GameScreen() {
     backgroundColor,
   });
   // set the ticker speed to 60 frames per secon
-  app.ticker.speed = 60
+  app.ticker.speed = 60;
 
   // Set border radius for PIXI view
   app.renderer.view.style.borderRadius = appConfig.borderRadius;
@@ -39,6 +39,14 @@ function GameScreen() {
 
   // roulette sprite object
   let roulette;
+
+  // roulette ticker instance
+  let roulletTickerInstance = new PIXI.Ticker();
+
+  // pointer chip ticker instance
+  let pointerChipTickerInstance = new PIXI.Ticker();
+
+  let pointerChipSprite;
 
   // latest bets
   const betsHistory = [];
@@ -64,6 +72,8 @@ function GameScreen() {
     setupRouletteTable(resources);
     setupChips(resources);
     addTablecollisionDetection();
+    initTickers();
+
     // save resources object globally
     loaderResources = resources;
   }
@@ -211,7 +221,10 @@ function GameScreen() {
       lineJoin: "round",
     });
 
-    const latestBetLabel = new PIXI.Text("LATEST BETS", latestBetLabel_TextStyle);
+    const latestBetLabel = new PIXI.Text(
+      "LATEST BETS",
+      latestBetLabel_TextStyle
+    );
 
     // lastest bet label position
     const latestBetLabelX = 900;
@@ -264,7 +277,7 @@ function GameScreen() {
 
       // add an event listener for mouse click
       chipSprite.on("pointerdown", () => {
-        handleChipSelection(chip);
+        handleChipSelection(chip, chipSprite);
       });
 
       // set chip scale
@@ -438,19 +451,16 @@ function GameScreen() {
 
     // refers to the length of time it takes for the animation to stop once the ball has landed on the result spot in milliseconds
     const totalDuration = duration * (fullRotationsNumber + spotIndex) * 1000;
-    
+
     // start roulette animation (rotation)
     if (roulette.rotation === 0) {
-      app.ticker.add(handleRotationSpeed);
-      app.ticker.start();
+      roulletTickerInstance.start(handleRotationSpeed);
     }
 
     // stop roulette animation after X milliseconds
     setTimeout(() => {
-      // remove ticker listner
-      app.ticker.remove(handleRotationSpeed);
       // stop the animation
-      app.ticker.stop();
+      roulletTickerInstance.stop(handleRotationSpeed);
 
       // update round status
       currentRoundStatus = "pending";
@@ -545,22 +555,73 @@ function GameScreen() {
     roulette.rotation += rouletteRotationSpeed;
   }
 
-  function handleChipSelection(chipData) {
+  function placeChipOnPointer(chipSprite) {
+    pointerChipTickerInstance = pointerChipTickerInstance.add(() => {
+      // try catch block was added here to catch the error at its scope and prevent the service from stop executing
+      try {
+        chipSprite.position.copyFrom(
+          app.renderer.plugins.interaction.mouse.global
+        );
+      } catch (err) {}
+    });
+    pointerChipTickerInstance.start();
+  }
+
+  function handleChipSelection(chipData, chipSprite) {
     // check if round status is pending and if the current chip is already selected
     if (
       currentRoundStatus === "pending" &&
       chipData.value !== selectedChip.value
-    )
-      selectedChip = chipData;
-    console.log(selectedChip);
+    ) {
+      if (pointerChipTickerInstance) {
+        pointerChipTickerInstance.stop();
+        pointerChipTickerInstance.remove();
+      }
+
+      // if a chip object is already rendered on the pointer destory it
+      if (pointerChipSprite) {
+        pointerChipSprite.destroy();
+        pointerChipSprite = null;
+      }
+
+      // Create a sprite object with a texture already assigned chip sprite object
+      pointerChipSprite = new PIXI.Sprite(chipSprite.texture);
+
+      // copy sprite position from pointer
+      pointerChipSprite.position.copyFrom(
+        app.renderer.plugins.interaction.mouse.global
+      );
+
+      // update sprite anchor
+      pointerChipSprite.anchor.set(0.5);
+
+      // update sprite scale
+      pointerChipSprite.scale.set(0.3);
+
+      // update sprite aplha
+      pointerChipSprite.alpha = 0.85;
+
+      // Add the new sprite to the stage
+      app.stage.addChild(pointerChipSprite);
+
+      selectedChip = { data: chipData, spriteObject: chipSprite };
+
+      // update the new rendered chip to follow pointer position
+      placeChipOnPointer(pointerChipSprite);
+    }
   }
 
   function handleInteractionWithTable(spotValue) {
     console.log(spotValue);
   }
 
+  function initTickers() {
+    // add roullet rotation ticker
+    roulletTickerInstance.add(handleRotationSpeed);
+  }
+
   function loadGameItems() {
-    console.log('loadGameItems');
+    console.log("loadGameItems");
     const loader = new PIXI.Loader();
     const ChipsImagePath = chips.map((elem) => elem.path);
 
