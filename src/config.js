@@ -6,13 +6,13 @@ const appConfig = {
     pocketsNumber: 37,               // total number of roulette pockets
     roundDuration: 10,                // round duration in seconds
     displayCollisionObjects: false,  // if true display table collision objects
-    rouletteRotationSpeed: 0.06,    // roulette rotation speed in radian
+    rouletteRotationSpeed: 0.055,    // roulette rotation speed in radian
 };
 
 // images folder
 const chipsFolder = "chip-default";
 
-// chips data
+// chips value and texture path
 const chips = [
     { value: 100, path: `${chipsFolder}/chip-0.png` },
     { value: 500, path: `${chipsFolder}/chip-1.png` },
@@ -33,7 +33,7 @@ const pockets = [];
 // fill pockets array
 for (let pocketCounter = 0; pocketCounter < appConfig.pocketsNumber; pocketCounter++) pockets.push(`${pocketsFolder}/pocket${pocketCounter}.png`)
 
-// table pockets 2d map
+// table pockets (2D map)
 // each element represent a table row
 const tablePockets = [
     [0, 3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, "2:1,1"],
@@ -71,8 +71,8 @@ const tablePockets = [
     ],
 ]
 
-// indexing roulette spots counterclockwise
-// 26 index 0 , 3 index 1 ....
+// indexing roulette spots counter-clockwise
+// spot 26 index 0 , spot 3 index 1 ....
 // use spots.indexOf(spotValue) to get spot index by value
 // used to determine the number of movements required for the ball to reach a specific spot.
 const spots = [

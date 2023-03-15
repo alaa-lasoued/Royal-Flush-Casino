@@ -30,12 +30,15 @@ function GameScreen() {
   // enable interactivity with stage
   app.stage.interactive = true;
 
-  // app vars
+  // app vars (refactoring : handle vars as states)
   // loader resources Object
   let loaderResources;
 
   // selected chip object { value , path }
-  let selectedChip = "";
+  let selectedChip = {};
+
+  // placed chips on the table
+  let placedChips = {};
 
   // roulette sprite object
   let roulette;
@@ -46,10 +49,17 @@ function GameScreen() {
   // pointer chip ticker instance
   let pointerChipTickerInstance = new PIXI.Ticker();
 
+  // pointer chip sprite object
   let pointerChipSprite;
 
   // latest bets
   const betsHistory = [];
+
+  // total bet amount
+  let totalBetAmount = 0;
+
+  // rendered text
+  let totalBetAmountText;
 
   // round status
   let currentRoundStatus = "pending"; // enum [ "pending" /*(waiting for timer to reach 0)*/ , "running" /*(round started)*/, "completed" /*(round completed)*/]
@@ -186,7 +196,7 @@ function GameScreen() {
     app.stage.addChild(timerTextObject);
 
     // set TEXT style
-    const amountlabel = new PIXI.Text("Bet Amount", style);
+    const amountlabel = new PIXI.Text("Total Bet Amount", style);
 
     // total bet amount text container position
     const betAmountContainerX = 550;
@@ -196,21 +206,21 @@ function GameScreen() {
     const verticalSpaceBetweebContainerItems = 20;
 
     // total bet amount label position
-    amountlabel.position.set(betAmountContainerX, betAmountContainerY);
+    amountlabel.position.set(betAmountContainerX - 20, betAmountContainerY);
 
     // append sprite to app stage
     app.stage.addChild(amountlabel);
 
-    const amount = new PIXI.Text("0.000  $", style);
+    totalBetAmountText = new PIXI.Text("0.000 $", style);
 
     // total bet amount position
-    amount.position.set(
+    totalBetAmountText.position.set(
       betAmountContainerX + verticalSpaceBetweebContainerItems,
       betAmountContainerY + horizontalSpaceBetweebContainerItems
     );
 
     // append sprite to app stage
-    app.stage.addChild(amount);
+    app.stage.addChild(totalBetAmountText);
 
     const latestBetLabel_TextStyle = new PIXI.TextStyle({
       fontFamily: "cursive",
@@ -324,7 +334,7 @@ function GameScreen() {
     table.position.set(750, 225);
 
     // ball position
-    ball.position.set(roulette.x - 2, roulette.y - 102);
+    ball.position.set(roulette.x - 3, roulette.y - 102);
 
     // roulette anchor
     roulette.anchor.set(0.5);
@@ -383,26 +393,33 @@ function GameScreen() {
           // enable interaction with graphic object
           rectangleGraphics.interactive = true;
 
+          // Add the graphics object to the stage
+          app.stage.addChild(rectangleGraphics);
+          const xPosition = collisionContainerX + horizontalGap * rownCounter;
+          const yPosition = collisionContainerY + verticalGap * columnCounter;
+
           // add an event listener for mouse click
           rectangleGraphics.on("mousedown", () => {
             // allow interaction only if round status is pending
             if (currentRoundStatus === "pending")
-              handleInteractionWithTable(spotValue);
+              handleInteractionWithTable({
+                spotValue,
+                spotSprite: rectangleGraphics,
+                x: xPosition,
+                y: yPosition,
+              });
           });
 
           // draw a 50x50 square at position (415,100)
           rectangleGraphics.drawRect(
-            collisionContainerX + horizontalGap * rownCounter,
-            collisionContainerY + verticalGap * columnCounter,
+            xPosition,
+            yPosition,
             collissionRectangleWidth,
             collissionRectangleHeight
           );
 
           // close the fill and complete the drawing
           rectangleGraphics.endFill();
-
-          // Add the graphics object to the stage
-          app.stage.addChild(rectangleGraphics);
         }
         // increment row counter
         rownCounter++;
@@ -415,61 +432,25 @@ function GameScreen() {
   }
 
   // Update the stage on each animation frame
-  function update() {
+  function updateStage() {
     // Update the stage
     app.renderer.render(app.stage);
 
     // Request a new animation frame
-    requestAnimationFrame(update);
+    requestAnimationFrame(updateStage);
   }
 
-  // handle round start
-  function startRound() {
-    // check if round status is valid
-    if (currentRoundStatus !== "pending")
-      alert(
-        "Sorry, betting is not allowed at this time as the round is already underway."
-      );
-    // reset timer
-    roundTimer = roundDuration;
-
-    // update round status
-    currentRoundStatus = "running";
-
-    // The ball takes about 0.3 seconds (0.2813s)
-    // to move from its current spot to the next one
-    // while roulette rotation speed is at 0.03 radian per frame
-    const duration = 0.2813 / (rouletteRotationSpeed * 100);
-
-    // generate a random integer which represent number of full rotations before playing the last animation
-    const randomInteger = Math.floor(Math.random() * 1 + 1); // default : 1 full rotations
-    const fullRotationsNumber = pocketsNumber * randomInteger;
-
-    // generate a random integer between (0 - 34) which represent the round result
-    roundResult = Math.floor(Math.random() * 34 + 1);
-    const spotIndex = spots.indexOf(roundResult) + 1; // get the index of a spot by round result value
-
-    // refers to the length of time it takes for the animation to stop once the ball has landed on the result spot in milliseconds
-    const totalDuration = duration * (fullRotationsNumber + spotIndex) * 1000;
-
-    // start roulette animation (rotation)
-    if (roulette.rotation === 0) {
-      roulletTickerInstance.start(handleRotationSpeed);
+  function destroyPlacedChips() {
+    // loop though each table spot which contain a chip
+    for (const spot in placedChips) {
+      // loop though each chip sprite placed on the table
+      for (const chipSprite of placedChips[spot]) {
+        // destroy chip sprite
+        chipSprite.destroy();
+      }
     }
-
-    // stop roulette animation after X milliseconds
-    setTimeout(() => {
-      // stop the animation
-      roulletTickerInstance.stop(handleRotationSpeed);
-
-      // update round status
-      currentRoundStatus = "pending";
-
-      // update bets history
-      updateBetsHistory(roundResult);
-
-      startRoundTimer();
-    }, totalDuration);
+    // reset placed chips object
+    placedChips = {};
   }
 
   // start timer countdown
@@ -495,6 +476,79 @@ function GameScreen() {
     }, 1000);
     // update intervals array
     intervals.push(timerInterval);
+  }
+
+  // handle round start
+  function startRound() {
+    // check if round status is valid
+    if (currentRoundStatus !== "pending")
+      alert(
+        "Sorry, betting is not allowed at this time as the round is already underway."
+      );
+    // reset timer
+    roundTimer = roundDuration;
+
+    // reset selected chip
+    selectedChip = {};
+
+    // update round status
+    currentRoundStatus = "running";
+
+    // prevent user form placing bet
+    stopBetsPlacing();
+
+    // The ball takes about 0.3 seconds (0.2822s)
+    // to move from its current spot to the next one
+    // while roulette rotation speed is at 0.03 radian per frame
+    const duration = 0.2827 / (rouletteRotationSpeed * 100);
+
+    // generate a random integer which represent number of full rotations before playing the last animation
+    const randomInteger = Math.floor(Math.random() * 1 + 1); // default : 1 full rotations
+    const fullRotationsNumber = pocketsNumber * randomInteger;
+
+    // generate a random integer between (0 - 34) which represent the round result
+    roundResult = Math.floor(Math.random() * 35);
+    const spotIndex = spots.indexOf(roundResult) + 1; // get the spot index by which represent the round result
+
+    // refers to the duration it takes for the animation to stop once the ball has landed on the result spot (milliseconds)
+    const totalDuration = duration * (fullRotationsNumber + spotIndex) * 1000;
+
+    // start animation
+    startRoulletRotation();
+
+    // stop animation
+    stopRoulletRotation(totalDuration);
+  }
+
+  function startRoulletRotation(totalDuration) {
+    if (roulette.rotation === 0) {
+      roulletTickerInstance.start();
+    }
+  }
+
+  function stopRoulletRotation(totalDuration) {
+    // stop the roulette rotation after X milliseconds
+    setTimeout(() => {
+      // handle win
+      handleWin();
+
+      // stop the animation
+      roulletTickerInstance.stop();
+
+      // destroy all chips on the table
+      destroyPlacedChips();
+
+      // reset rendered text value
+      totalBetAmountText.text = "0.000 $";
+
+      // update round status
+      currentRoundStatus = "pending";
+
+      // update bets history
+      updateBetsHistory(roundResult);
+
+      startRoundTimer();
+    }, totalDuration);
   }
 
   function updateBetsHistory(roundResult) {
@@ -550,12 +604,19 @@ function GameScreen() {
     });
   }
 
-  // ticker listner to increase roulette rotation speed
-  function handleRotationSpeed() {
-    roulette.rotation += rouletteRotationSpeed;
+  function stopBetsPlacing() {
+    // destroy the chip sprite rendered on the pointer
+    if (pointerChipSprite instanceof PIXI.Sprite) {
+      pointerChipSprite.destroy();
+      pointerChipSprite = null;
+    }
   }
 
-  function placeChipOnPointer(chipSprite) {
+  function handleRotationSpeed(delta) {
+    roulette.rotation += rouletteRotationSpeed * delta;
+  }
+
+  function placeSelectedChipOnPointer(chipSprite) {
     pointerChipTickerInstance = pointerChipTickerInstance.add(() => {
       // try catch block was added here to catch the error at its scope and prevent the service from stop executing
       try {
@@ -579,7 +640,7 @@ function GameScreen() {
       }
 
       // if a chip object is already rendered on the pointer destory it
-      if (pointerChipSprite) {
+      if (pointerChipSprite instanceof PIXI.Sprite) {
         pointerChipSprite.destroy();
         pointerChipSprite = null;
       }
@@ -607,17 +668,124 @@ function GameScreen() {
       selectedChip = { data: chipData, spriteObject: chipSprite };
 
       // update the new rendered chip to follow pointer position
-      placeChipOnPointer(pointerChipSprite);
+      placeSelectedChipOnPointer(pointerChipSprite);
     }
   }
 
-  function handleInteractionWithTable(spotValue) {
-    console.log(spotValue);
+  function handleInteractionWithTable(spriteData) {
+    if (currentRoundStatus === "pending" && Object.keys(selectedChip).length) {
+      // Restrict the number of sprites that can be placed on each spot to two
+      if (
+        placedChips[spriteData.spotValue] &&
+        placedChips[spriteData.spotValue].length === 2
+      )
+        return;
+
+      // Create a sprite object with a texture already assigned chip sprite object
+      const placedChip = new PIXI.Sprite(selectedChip.spriteObject.texture);
+
+      // save chip value
+      placedChip.value = selectedChip.data.value;
+
+      // update total bet amount
+      totalBetAmount += placedChip.value;
+
+      // updated rendered text
+      totalBetAmountText.text = `${totalBetAmount} $`;
+
+      // update sprite anchor
+      placedChip.anchor.set(0.3);
+
+      // update sprite scale
+      placedChip.scale.set(0.22);
+
+      if (placedChips[spriteData.spotValue]) {
+        placedChips[spriteData.spotValue] = [
+          ...placedChips[spriteData.spotValue],
+          placedChip,
+        ];
+      } else placedChips[spriteData.spotValue] = [placedChip];
+
+      // update sprite position
+      placedChip.position.x = spriteData.x;
+      placedChip.position.y =
+        spriteData.y + placedChips[spriteData.spotValue].length * 10;
+
+      // Add the new sprite to the stage
+      app.stage.addChild(placedChip);
+    }
+  }
+
+  function handleWin() {
+    if (placedChips[roundResult]) {
+      // currently the reward is 5x for all spots
+      const wonAmount = (calculateWonAmount(placedChips[roundResult]) * 5);
+      displayWonAmount(wonAmount);
+    }
+  }
+
+  function calculateWonAmount(spot) {
+    let amount = 0;
+
+    // loup though each sprite rendered on the winning spot
+    for (const chipSprite of spot) amount += chipSprite.value;
+
+    return amount;
+  }
+
+  function displayWonAmount(amount) {
+    const labelStyle = new PIXI.TextStyle({
+      fontFamily: "cursive",
+      fontSize: 25,
+      fill: ["#e7ebea"],
+      wordWrap: true,
+      wordWrapWidth: 440,
+      lineJoin: "round",
+    });
+
+    // TEXT style
+    const wonAmountLabel = new PIXI.Text("You Won", labelStyle);
+
+    // label position
+    const wonAmountLabelX = 840;
+    const wonAmountLabelY = 430;
+
+    // update label position
+    wonAmountLabel.position.set(wonAmountLabelX, wonAmountLabelY);
+
+    // append text to app stage
+    app.stage.addChild(wonAmountLabel);
+
+    const wonAmounTextStyle = new PIXI.TextStyle({
+      fontFamily: "cursive",
+      fontSize: 25,
+      fill: "green",
+      wordWrap: true,
+      wordWrapWidth: 440,
+      lineJoin: "round",
+    });
+
+    // TEXT style
+    const wonAmount = new PIXI.Text(`+${amount}`, wonAmounTextStyle);
+
+    // update label position
+    wonAmount.position.set(wonAmountLabelX, wonAmountLabelY + 40);
+
+    // append text to app stage
+    app.stage.addChild(wonAmount);
+
+    // remove label and won amount text after x ms
+    setTimeout(() => {
+      wonAmountLabel.destroy();
+      wonAmount.destroy();
+    }, 3000);
   }
 
   function initTickers() {
     // add roullet rotation ticker
-    roulletTickerInstance.add(handleRotationSpeed);
+    roulletTickerInstance.add((delta) => {
+      handleRotationSpeed(delta);
+    });
   }
 
   function loadGameItems() {
@@ -653,8 +821,8 @@ function GameScreen() {
     container.current.appendChild(app.view);
     startRoundTimer();
     // Start the update loop
-    update();
-    // clear running intervals when component is destroyed or rendered
+    updateStage();
+    // clear running intervals when component is destroyed or re-rendered
     return () => {
       intervals.forEach((elem) => clearInterval(elem));
     };
