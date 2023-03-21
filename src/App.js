@@ -13,8 +13,8 @@ function App() {
   return (
     <div className={bodyBackgroundColor}>
       <NavBar backgroundColor={navBarBackgroundColor} />
-      <div id='mainApp' className='flex flex-row grow-0'>
-        <SideBar NavBar backgroundColor={sideBarBackgroundColor}/>
+      <div id='mainApp' className='flex flex-row grow-0 h-screen'>
+        {/* <SideBar NavBar backgroundColor={sideBarBackgroundColor}/> */}
         <GameScreen />
       </div>
     </div>

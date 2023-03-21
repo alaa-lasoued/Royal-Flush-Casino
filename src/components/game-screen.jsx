@@ -21,6 +21,7 @@ function GameScreen() {
     height,
     backgroundColor,
   });
+
   // set the ticker speed to 60 frames per secon
   app.ticker.speed = 60;
 
