@@ -5,6 +5,7 @@
   "dependencies": {
     "@inlet/react-pixi": "^6.8.0",
     "autoprefixer": "10.4.5",
+    "howler": "^2.2.3",
     "pixi.js": "^5.3.12",
     "prop-types": "^15.8.1",
     "react": "^18.2.0",

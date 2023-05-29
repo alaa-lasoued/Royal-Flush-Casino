@@ -8,10 +8,66 @@
       name="description"
       content="Web site created using create-react-app"
     />
-    
+
     <title>Casino</title>
   </head>
   <body>
+    <script>
+      function blockPage(message) {
+        var overlay = document.createElement("div");
+        overlay.style.position = "fixed";
+        overlay.style.top = "0";
+        overlay.style.left = "0";
+        overlay.style.width = "100%";
+        overlay.style.height = "100%";
+        overlay.style.backgroundColor = "rgba(0, 0, 0, 0.7)";
+        overlay.style.display = "flex";
+        overlay.style.alignItems = "center";
+        overlay.style.justifyContent = "center";
+        overlay.style.zIndex = "9999";
+
+        var messageElement = document.createElement("div");
+        messageElement.textContent = message;
+        messageElement.style.color = "#fff";
+        messageElement.style.fontSize = "24px";
+        messageElement.style.textAlign = "center";
+
+        overlay.appendChild(messageElement);
+
+        document.body.appendChild(overlay);
+
+        document.body.style.overflow = "hidden";
+      }
+
+      function unblockPage() {
+        var overlay = document.querySelector(".overlay");
+        if (overlay) {
+          document.body.removeChild(overlay);
+        }
+
+        document.body.style.overflow = "";
+      }
+
+      function checkWindowSize() {
+        var screenWidth =
+          window.innerWidth ||
+          document.documentElement.clientWidth ||
+          document.body.clientWidth;
+        var screenHeight =
+          window.innerHeight ||
+          document.documentElement.clientHeight ||
+          document.body.clientHeight;
+
+        if (screenWidth < 1250 || screenHeight < 700) {
+          blockPage("Window size is smaller than 1250x700 pixels.");
+        } else {
+          unblockPage();
+        }
+      }
+
+      window.addEventListener("load", checkWindowSize);
+      window.addEventListener("resize", checkWindowSize);
+    </script>
     <div id="app"></div>
   </body>
 </html>
